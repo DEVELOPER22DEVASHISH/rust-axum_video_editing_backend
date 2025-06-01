@@ -3,6 +3,11 @@ name = "video_editing_backend_rust"
 version = "0.1.0"
 edition = "2024"
 
+
+[workspace]
+members = ["migration"]
+
+
 [dependencies]
 anyhow = "1.0.98"
 axum = "0.8.4"
