@@ -1,8 +1,9 @@
-use ffmpeg_cli::{FfmpegBuilder, FfprobeBuilder};
+use ffmpeg_cli::FfmpegBuilder;
+use ffprobe::ffprobe;
 use serde::Deserialize;
-use std::process::Stdio;
+// use std::process::Stdio;
 use std::io;
-use tokio::process::Command;
+// use tokio::process::Command;
 
 #[derive(Debug, Deserialize)]
 struct FFprobeFormat {
@@ -77,28 +78,53 @@ pub async fn add_subtitles(
     }
 }
 
-/// Probe a video file and return its duration in seconds.
 pub async fn get_video_duration_in_seconds(file_path: &str) -> Result<f64, io::Error> {
-    let output = FfprobeBuilder::new()
-        .input(file_path)
-        .show_format()
-        .show_streams()
-        .json()
-        .run()
-        .await?;
+    let metadata = ffprobe(file_path).map_err(|e| {
+        io::Error::new(io::ErrorKind::Other, format!("ffprobe failed: {}", e))
+    })?;
 
-    let ffprobe_result: FFprobeResult = serde_json::from_slice(&output.stdout)
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Failed to parse ffprobe output: {}", e)))?;
+    if let Some(duration_str) = metadata.format.duration {
+        return duration_str
+            .parse::<f64>()
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Parse error: {}", e)));
+    }
 
-    if let Some(duration) = ffprobe_result.format.duration {
-        return Ok(duration);
+    for stream in metadata.streams {
+        if stream.codec_type == Some("video".to_string()) {
+            if let Some(duration_str) = stream.duration {
+                return duration_str
+                    .parse::<f64>()
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Parse error: {}", e)));
+            }
+        }
     }
-    if let Some(stream) = ffprobe_result
-        .streams
-        .iter()
-        .find(|s| s.codec_type == "video" && s.duration.is_some())
-    {
-        return Ok(stream.duration.unwrap());
-    }
-    Err(io::Error::new(io::ErrorKind::Other, "Could not determine video duration"))
+
+    Err(io::Error::new(io::ErrorKind::Other, "Duration not found"))
 }
+
+
+// Probe a video file and return its duration in seconds.
+// pub async fn get_video_duration_in_seconds(file_path: &str) -> Result<f64, io::Error> {
+//     let output = ffprober::new()
+//         .input(file_path)
+//         .show_format()
+//         .show_streams()
+//         .json()
+//         .run()
+//         .await?;
+
+//     let ffprobe_result: FFprobeResult = serde_json::from_slice(&output.stdout)
+//         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Failed to parse ffprobe output: {}", e)))?;
+
+//     if let Some(duration) = ffprobe_result.format.duration {
+//         return Ok(duration);
+//     }
+//     if let Some(stream) = ffprobe_result
+//         .streams
+//         .iter()
+//         .find(|s| s.codec_type == "video" && s.duration.is_some())
+//     {
+//         return Ok(stream.duration.unwrap());
+//     }
+//     Err(io::Error::new(io::ErrorKind::Other, "Could not determine video duration"))
+// }

@@ -2,10 +2,11 @@ mod config;
 mod database;
 mod routes;
 mod handlers;
-mod models;
 mod services;
-// mod lib;
+mod library;
 mod middlewares;
+mod entities;
+
 
 use axum::serve;
 use config::constant::EnvConfig;

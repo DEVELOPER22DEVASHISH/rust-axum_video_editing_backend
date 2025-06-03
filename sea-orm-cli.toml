@@ -1,9 +1,0 @@
-[lib]
-name = "video_editing_backend_rust"
-database_url = "postgres://postgres:12345678@127.0.0.1:5432/video_editing_rust"
-
-[migration]
-dir = "migration"
-
-[entities]
-module = "entities"
