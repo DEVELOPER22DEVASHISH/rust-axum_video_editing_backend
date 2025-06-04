@@ -1,49 +1,33 @@
-use ffmpeg_cli::FfmpegBuilder;
+use ffmpeg_cli::{FfmpegBuilder, File, Parameter};
 use ffprobe::ffprobe;
-use serde::Deserialize;
-// use std::process::Stdio;
 use std::io;
-// use tokio::process::Command;
 
-#[derive(Debug, Deserialize)]
-struct FFprobeFormat {
-    duration: Option<f64>,
-}
 
-#[derive(Debug, Deserialize)]
-struct FFprobeStream {
-    codec_type: String,
-    duration: Option<f64>,
-}
-
-#[derive(Debug, Deserialize)]
-struct FFprobeResult {
-    format: FFprobeFormat,
-    streams: Vec<FFprobeStream>,
-}
-
-/// Trim a segment out of a video.
 pub async fn trim_video(
     input_path: &str,
     output_path: &str,
     start_time: &str,
     duration: &str,
 ) -> Result<(), io::Error> {
-    let status = FfmpegBuilder::new()
-        .input(input_path)
-        .seek(start_time)
-        .duration(duration)
-        .output(output_path)
+    FfmpegBuilder::new()
+        .option(Parameter::Single("-ss"))
+        .option(Parameter::Single(start_time))
+        .option(Parameter::Single("-t"))
+        .option(Parameter::Single(duration))
+        .input(File::new(input_path))
+        .output(
+            File::new(output_path)
+                .option(Parameter::Single("-c"))
+                .option(Parameter::Single("copy"))
+        )
         .run()
-        .await?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(io::Error::new(io::ErrorKind::Other, "FFmpeg failed"))
-    }
+        .await
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+
+    Ok(())
 }
 
-/// Overlay text subtitles on a video.
+/// Overlay text subtitles on a video
 pub async fn add_subtitles(
     input_path: &str,
     output_path: &str,
@@ -51,31 +35,33 @@ pub async fn add_subtitles(
     start_time: &str,
     end_time: &str,
 ) -> Result<(), io::Error> {
-    let start_num: f64 = start_time.parse().map_err(|_| io::Error::new(io::ErrorKind::Other, "Invalid start_time"))?;
-    let end_num: f64 = end_time.parse().map_err(|_| io::Error::new(io::ErrorKind::Other, "Invalid end_time"))?;
+    let start_num: f64 = start_time.parse()
+        .map_err(|_| io::Error::new(io::ErrorKind::Other, "Invalid start_time"))?;
+    let end_num: f64 = end_time.parse()
+        .map_err(|_| io::Error::new(io::ErrorKind::Other, "Invalid end_time"))?;
+
     if end_num <= start_num {
-        return Err(io::Error::new(io::ErrorKind::Other, "Invalid start/end times for subtitles"));
+        return Err(io::Error::new(io::ErrorKind::Other, "Invalid start/end times"));
     }
 
-    // Escape single quotes for ffmpeg filter
     let safe_text = subtitle_text.replace('\'', "\\'");
-
     let filter = format!(
         "drawtext=text='{}':enable='between(t,{},{})':fontcolor=white:fontsize=24:x=(w-text_w)/2:y=h-50",
         safe_text, start_num, end_num
     );
 
-    let status = FfmpegBuilder::new()
-        .input(input_path)
-        .video_filter(&filter)
-        .output(output_path)
+    FfmpegBuilder::new()
+        .input(File::new(input_path))
+        .output(
+            File::new(output_path)
+                .option(Parameter::Single("-vf"))
+                .option(Parameter::Single(&filter))
+        )
         .run()
-        .await?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(io::Error::new(io::ErrorKind::Other, "FFmpeg failed"))
-    }
+        .await
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+
+    Ok(())
 }
 
 pub async fn get_video_duration_in_seconds(file_path: &str) -> Result<f64, io::Error> {
@@ -101,6 +87,24 @@ pub async fn get_video_duration_in_seconds(file_path: &str) -> Result<f64, io::E
 
     Err(io::Error::new(io::ErrorKind::Other, "Duration not found"))
 }
+
+
+// #[derive(Debug, Deserialize)]
+// struct FFprobeFormat {
+//     duration: Option<f64>,
+// }
+
+// #[derive(Debug, Deserialize)]
+// struct FFprobeStream {
+//     codec_type: String,
+//     duration: Option<f64>,
+// }
+
+// #[derive(Debug, Deserialize)]
+// struct FFprobeResult {
+//     format: FFprobeFormat,
+//     streams: Vec<FFprobeStream>,
+// }
 
 
 // Probe a video file and return its duration in seconds.

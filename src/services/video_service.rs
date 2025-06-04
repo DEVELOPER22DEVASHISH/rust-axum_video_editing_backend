@@ -5,6 +5,9 @@ use chrono::Utc;
 use std::io;
 use std::path::Path;
 use anyhow::Result;
+use tokio::fs;
+use std::path::PathBuf;
+
 
 pub struct VideoService {
     pub db: DatabaseConnection,
@@ -29,8 +32,8 @@ impl VideoService {
             file_size: Set(file_size),
             duration: Set(duration),
             status: Set("uploaded".to_string()),
-            created_at: Set(now),
-            updated_at: Set(now),
+            created_at: Set(now.into()),
+            updated_at: Set(now.into()),
             ..Default::default()
         };
         Ok(active.insert(&self.db).await.map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?)
@@ -66,7 +69,7 @@ impl VideoService {
         active.file_path = Set(trimmed_path);
         active.status = Set("trimmed".to_string());
         active.duration = Set(Some(new_duration));
-        active.updated_at = Set(Utc::now());
+        active.updated_at = Set(Utc::now().into());
 
         Ok(active.update(&self.db).await.map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?)
     }
@@ -109,18 +112,16 @@ impl VideoService {
 
         // let duration = video.duration.or_else(|| get_video_duration_in_seconds(&subtitled_path).await.ok());
         let duration = if video.duration.is_some() {
-                                       video.duration
-                                       } else {
-                                get_video_duration_in_seconds(&subtitled_path).await.ok()
-                                       };
-
-        
+            video.duration
+        } else {
+            get_video_duration_in_seconds(&subtitled_path).await.ok()
+        };
 
         let mut active: video::ActiveModel = video.into();
         active.file_path = Set(subtitled_path);
         active.status = Set("subtitled".to_string());
         active.duration = Set(duration);
-        active.updated_at = Set(Utc::now());
+        active.updated_at = Set(Utc::now().into());
 
         Ok(active.update(&self.db).await.map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?)
     }
@@ -148,28 +149,36 @@ impl VideoService {
         let mut active: video::ActiveModel = video.into();
         active.file_path = Set(rendered_path);
         active.status = Set("rendered".to_string());
-        active.updated_at = Set(Utc::now());
+        active.updated_at = Set(Utc::now().into());
 
         Ok(active.update(&self.db).await.map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?)
     }
 
     pub async fn get_video_download_path(
-        &self,
-        id: i32,
-    ) -> Result<String, io::Error> {
-        let video = video::Entity::find_by_id(id)
-            .one(&self.db)
-            .await
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?
-            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Video not found"))?;
+    &self,
+    id: i32,
+) -> Result<String, io::Error> {
+    let video = video::Entity::find_by_id(id)
+        .one(&self.db)
+        .await
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Video not found"))?;
 
-        if video.status != "rendered" {
-            return Err(io::Error::new(io::ErrorKind::Other, "Video must be rendered before download"));
-        }
-
-        let full_path = std::fs::canonicalize(&video.file_path)
-            .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Rendered video file not found on disk"))?;
-
-        Ok(full_path.to_string_lossy().to_string())
+    if video.status != "rendered" {
+        return Err(io::Error::new(io::ErrorKind::Other, "Video must be rendered before download"));
     }
+
+    let file_path = PathBuf::from(&video.file_path);
+
+    // Use async metadata check to see if file exists
+    if fs::metadata(&file_path).await.is_err() {
+        return Err(io::Error::new(io::ErrorKind::NotFound, "Rendered video file not found on disk"));
+    }
+
+    // Optionally canonicalize path (blocking), but only if you really need it
+    // let full_path = fs::canonicalize(&file_path).await.unwrap_or(file_path);
+
+    Ok(file_path.to_string_lossy().to_string())
+}
+
 }

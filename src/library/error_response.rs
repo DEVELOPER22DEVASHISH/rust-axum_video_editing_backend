@@ -34,33 +34,33 @@ impl AppError {
         )
     }
 
-    pub fn unauthorized(message: Option<&str>) -> Self {
-        Self::create_error(
-            message.unwrap_or("You are not authorized to access this resource"),
-            StatusCode::UNAUTHORIZED,
-        )
-    }
+    // pub fn unauthorized(message: Option<&str>) -> Self {
+    //     Self::create_error(
+    //         message.unwrap_or("You are not authorized to access this resource"),
+    //         StatusCode::UNAUTHORIZED,
+    //     )
+    // }
 
-    pub fn forbidden(message: Option<&str>) -> Self {
-        Self::create_error(
-            message.unwrap_or("Unauthorized"),
-            StatusCode::FORBIDDEN,
-        )
-    }
+    // pub fn forbidden(message: Option<&str>) -> Self {
+    //     Self::create_error(
+    //         message.unwrap_or("Unauthorized"),
+    //         StatusCode::FORBIDDEN,
+    //     )
+    // }
 
-    pub fn conflict(message: Option<&str>) -> Self {
-        Self::create_error(
-            message.unwrap_or("The resource already exists and cannot be created again"),
-            StatusCode::CONFLICT,
-        )
-    }
+    // pub fn conflict(message: Option<&str>) -> Self {
+    //     Self::create_error(
+    //         message.unwrap_or("The resource already exists and cannot be created again"),
+    //         StatusCode::CONFLICT,
+    //     )
+    // }
 
-    pub fn too_many_requests(message: Option<&str>) -> Self {
-        Self::create_error(
-            message.unwrap_or("Too many requests in a stipulated time frame"),
-            StatusCode::TOO_MANY_REQUESTS,
-        )
-    }
+    // pub fn too_many_requests(message: Option<&str>) -> Self {
+    //     Self::create_error(
+    //         message.unwrap_or("Too many requests in a stipulated time frame"),
+    //         StatusCode::TOO_MANY_REQUESTS,
+    //     )
+    // }
 
     pub fn internal_server(message: Option<&str>) -> Self {
         Self::create_error(
@@ -69,12 +69,12 @@ impl AppError {
         )
     }
 
-    pub fn service_unavailable(message: Option<&str>) -> Self {
-        Self::create_error(
-            message.unwrap_or("Service unavailable"),
-            StatusCode::SERVICE_UNAVAILABLE,
-        )
-    }
+    // pub fn service_unavailable(message: Option<&str>) -> Self {
+    //     Self::create_error(
+    //         message.unwrap_or("Service unavailable"),
+    //         StatusCode::SERVICE_UNAVAILABLE,
+    //     )
+    // }
 
     pub fn not_found(message: Option<&str>) -> Self {
         Self::create_error(
@@ -83,12 +83,12 @@ impl AppError {
         )
     }
 
-    pub fn gone(message: Option<&str>) -> Self {
-        Self::create_error(
-            message.unwrap_or("Gone"),
-            StatusCode::GONE,
-        )
-    }
+    // pub fn gone(message: Option<&str>) -> Self {
+    //     Self::create_error(
+    //         message.unwrap_or("Gone"),
+    //         StatusCode::GONE,
+    //     )
+    // }
 }
 
 impl IntoResponse for AppError {

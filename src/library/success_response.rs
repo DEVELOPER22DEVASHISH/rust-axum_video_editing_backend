@@ -48,8 +48,8 @@ impl SuccessResponse {
         )
     }
 
-    /// 204 No Content response
-    pub fn no_content() -> Response {
-        StatusCode::NO_CONTENT.into_response()
-    }
+    // 204 No Content response
+    // pub fn no_content() -> Response {
+    //     StatusCode::NO_CONTENT.into_response()
+    // }
 }
